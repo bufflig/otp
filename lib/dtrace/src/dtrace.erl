@@ -188,24 +188,31 @@ user_trace_int(I1, I2, I3, I4, S1, S2, S3, S4) ->
             false
     end.
 
--spec put_utag(undefined | iolist()) -> ok.
+-spec put_utag(undefined | iodata()) -> ok.
+put_utag(Data) ->
+    erlang:put_utag(unicode:characters_to_binary(Data)).
 
-put_utag(undefined) ->
-    put_utag(<<>>);
-put_utag(T) when is_binary(T) ->
-    put(?DTRACE_UT_KEY, T),
-    ok;
-put_utag(T) when is_list(T) ->
-    put(?DTRACE_UT_KEY, list_to_binary(T)),
-    ok.
-
+-spec get_utag() -> binary().
 get_utag() ->
-    case get(?DTRACE_UT_KEY) of
-        undefined ->
-            <<>>;
-        X ->
-            X
-    end.
+    erlang:get_utag().
+
+-spec get_utag_data() -> binary().
+%% Gets utag if set, otherwise spread utag data from last incoming message
+get_utag() ->
+    erlang:get_utag_data().
+
+-spec get_drv_utag_data() -> binary().
+%% Same as get_utag_data, but data is preformatted for sending to a driver:
+%% Returns either NIL (non dtrace VM) or a binary with a prefixed size byte <<Size:8,Data/binary:Size>>. 
+%% Data is a string in UTF8.
+get_drv_utag_data() ->
+    erlang:get_drv_utag_data().
+
+-spec spread_utag() -> true.
+%% Makes the utag behave as a sequential trace token, will spread with messages to be picked up by someone using
+%% get_utag_data or get_drv_utag_data. 
+spread_utag() ->			   
+    erlang:spread_utag().
 
 %% Scaffolding to write tedious code: quick brute force and not 100% correct.
 

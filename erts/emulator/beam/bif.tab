@@ -812,6 +812,16 @@ bif erlang:check_old_code/1
 #
 bif erlang:universaltime_to_posixtime/1
 bif erlang:posixtime_to_universaltime/1
+
+#
+# New in R15B01
+#
+bif erlang:put_utag/1
+bif erlang:get_utag/0
+bif erlang:get_utag_data/0
+bif erlang:get_drv_utag_data/0
+bif erlang:spread_utag/0
+
 #
 # Obsolete
 #

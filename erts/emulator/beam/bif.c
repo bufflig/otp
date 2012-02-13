@@ -4551,3 +4551,32 @@ BIF_RETTYPE get_module_info_2(BIF_ALIST_2)
     }
     BIF_RET(ret);
 }
+
+BIF_RETTYPE put_utag_1(BIF_ALIST_1)
+{
+    BIF_RET(am_undefined);
+}
+
+BIF_RETTYPE get_utag_0(BIF_ALIST_0)
+{
+    BIF_RET(am_undefined);
+}
+BIF_RETTYPE get_utag_data_0(BIF_ALIST_0)
+{
+    BIF_RET(am_undefined);
+}
+BIF_RETTYPE get_drv_utag_data_0(BIF_ALIST_0)
+{
+#ifdef HAVE_DTRACE
+    Eterm b = new_binary(BIF_P,"\0",1);
+    BIF_RET(b);
+#else
+    BIF_RET(NIL);
+#endif
+}
+BIF_RETTYPE spread_utag_0(BIF_ALIST_0)
+{
+    BIF_RET(am_true);
+}
+
+
