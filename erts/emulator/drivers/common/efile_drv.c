@@ -3784,8 +3784,7 @@ file_outputv(ErlDrvData e, ErlIOVec *ev) {
 	    /* Name not in one single buffer */
 	    reply_posix_error(desc, EINVAL);
 	    goto done;
-	}
-#	
+	}	
 #endif
 	filename = EV_CHAR_P(ev, p, q);
 	d = EF_ALLOC(sizeof(struct t_data) -1 + FILENAME_BYTELEN(filename) + FILENAME_CHARSIZE);
