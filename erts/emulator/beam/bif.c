@@ -4565,13 +4565,24 @@ BIF_RETTYPE get_utag_data_0(BIF_ALIST_0)
 {
     BIF_RET(am_undefined);
 }
-BIF_RETTYPE get_drv_utag_data_0(BIF_ALIST_0)
+BIF_RETTYPE prepend_vm_utag_data_1(BIF_ALIST_1)
 {
 #ifdef HAVE_DTRACE
-    Eterm b = new_binary(BIF_P,"\0",1);
-    BIF_RET(b);
+    Eterm b = new_binary(BIF_P,(byte *)"\0",1);
+    Eterm *hp = HAlloc(BIF_P,2);
+    BIF_RET(CONS(hp,b,BIF_ARG_1));
 #else
-    BIF_RET(NIL);
+    BIF_RET(BIF_ARG_1);
+#endif
+}
+BIF_RETTYPE append_vm_utag_data_1(BIF_ALIST_1)
+{
+#ifdef HAVE_DTRACE
+    Eterm b = new_binary(BIF_P,(byte *)"\0",1);
+    Eterm *hp = HAlloc(BIF_P,2);
+    BIF_RET(CONS(hp,BIF_ARG_1,b));
+#else
+    BIF_RET(BIF_ARG_1);
 #endif
 }
 BIF_RETTYPE spread_utag_0(BIF_ALIST_0)

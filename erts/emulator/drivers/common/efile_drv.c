@@ -100,7 +100,7 @@
 #endif
 #include <stdlib.h>
 
-// Need (NON)BLOCKING macros for sendfile
+/* Need (NON)BLOCKING macros for sendfile */
 #ifndef WANT_NONBLOCKING
 #define WANT_NONBLOCKING
 #endif
@@ -112,7 +112,7 @@
 #include "erl_threads.h"
 #include "zlib.h"
 #include "gzio.h"
-#include "dtrace-wrapper.h"
+#include "dtrace-wrapper.h" 
 #include <ctype.h>
 #include <sys/types.h>
 
@@ -149,10 +149,6 @@ typedef struct {
 
 dt_private *get_dt_private(int);
 #else  /* HAVE_DTRACE */
-typedef struct {
-    char        dummy;          /* Unused except to quiet some compilers */
-} dt_private;
-
 #define DTRACE_INVOKE_SETUP(op)            do {} while (0)
 #define DTRACE_INVOKE_SETUP_BY_NAME(op)    do {} while (0)
 #define DTRACE_INVOKE_RETURN(op)           do {} while (0)
@@ -2055,9 +2051,9 @@ static struct t_data *async_write(file_descriptor *desc, int *errp,
     return d;
 }
 
-static int flush_write(file_descriptor *desc, int *errp,
+static int flush_write(file_descriptor *desc, int *errp
 #ifdef HAVE_DTRACE
-                       dt_private *dt_priv, char *dt_utag
+                       , dt_private *dt_priv, char *dt_utag
 #endif
 ) {
     int    result = 0;
@@ -2107,10 +2103,17 @@ static int check_write_error(file_descriptor *desc, int *errp) {
     return 0;
 }
 
-static int flush_write_check_error(file_descriptor *desc, int *errp,
-                                   dt_private *dt_priv, char *dt_utag) {
+static int flush_write_check_error(file_descriptor *desc, int *errp
+#ifdef HAVE_DTRACE
+                                   , dt_private *dt_priv, char *dt_utag
+#endif
+				   ) {
     int r;
-    if ( (r = flush_write(desc, errp, dt_priv, dt_utag)) != 0) {
+    if ( (r = flush_write(desc, errp
+#ifdef HAVE_DTRACE
+			  , dt_priv, dt_utag
+#endif
+			  )) != 0) {
 	check_write_error(desc, NULL);
 	return r;
     } else {
@@ -2119,8 +2122,11 @@ static int flush_write_check_error(file_descriptor *desc, int *errp,
 }
 
 static struct t_data *async_lseek(file_descriptor *desc, int *errp, int reply,
-		       Sint64 offset, int origin,
-                       Sint64 *dt_i1, Sint64 *dt_i2, Sint64 *dt_i3) {
+				  Sint64 offset, int origin
+#ifdef HAVE_DTRACE
+				  , Sint64 *dt_i1, Sint64 *dt_i2, Sint64 *dt_i3
+#endif
+				  ) {
     struct t_data *d;
     if (! (d = EF_ALLOC(sizeof(struct t_data)))) {
 	*errp = ENOMEM;
@@ -2132,11 +2138,13 @@ static struct t_data *async_lseek(file_descriptor *desc, int *errp, int reply,
     d->reply = reply;
     d->c.lseek.offset = offset;
     d->c.lseek.origin = origin;
+#ifdef HAVE_DTRACE
     if (dt_i1 != NULL) {
         *dt_i1 = d->fd;
         *dt_i2 = d->c.lseek.offset;
         *dt_i3 = d->c.lseek.origin;
     }
+#endif
     d->invoke = invoke_lseek;
     d->free = free_data;
     d->level = 1;
@@ -2153,18 +2161,26 @@ static void flush_read(file_descriptor *desc) {
     }
 }
 
-static int lseek_flush_read(file_descriptor *desc, int *errp,
-                            dt_private *dt_priv, char *dt_utag) {
+static int lseek_flush_read(file_descriptor *desc, int *errp
+#ifdef HAVE_DTRACE
+			    ,dt_private *dt_priv, char *dt_utag
+#endif
+			    ) {
     int r = 0;
     size_t read_size = desc->read_size;
+#ifdef HAVE_DTRACE
     Sint64 dt_i1 = 0, dt_i2 = 0, dt_i3 = 0;
+#endif
     struct t_data *d;
 
     flush_read(desc);
     if (read_size != 0) {
 	if ((d = async_lseek(desc, errp, 0,
-                             -((ssize_t)read_size), EFILE_SEEK_CUR,
-                             &dt_i1, &dt_i2, &dt_i3)) == NULL) {
+                             -((ssize_t)read_size), EFILE_SEEK_CUR
+#ifdef HAVE_DTRACE
+			     , &dt_i1, &dt_i2, &dt_i3
+#endif
+			     )) == NULL) {
             r = -1;
         } else {
 #ifdef HAVE_DTRACE
@@ -2732,11 +2748,11 @@ file_output(ErlDrvData e, char* buf, ErlDrvSizeT count)
 	{
 	    d = EF_SAFE_ALLOC(sizeof(struct t_data));
 	    
+	    d->fd = fd;
 #ifdef HAVE_DTRACE
 	    dt_utag = name;
-#endif
-	    d->fd = fd;
 	    dt_i1 = fd;
+#endif
 	    d->command = command;
 	    d->invoke = invoke_fdatasync;
 	    d->free = free_data;
@@ -2748,11 +2764,11 @@ file_output(ErlDrvData e, char* buf, ErlDrvSizeT count)
 	{
 	    d = EF_SAFE_ALLOC(sizeof(struct t_data));
 	    
+	    d->fd = fd;
 #ifdef HAVE_DTRACE
 	    dt_utag = name;
-#endif
-	    d->fd = fd;
 	    dt_i1 = fd;
+#endif
 	    d->command = command;
 	    d->invoke = invoke_fsync;
 	    d->free = free_data;
@@ -3077,12 +3093,11 @@ file_outputv(ErlDrvData e, ErlIOVec *ev) {
     struct t_data *d = NULL;
 #ifdef HAVE_DTRACE
     Sint64 dt_i1 = 0, dt_i2 = 0, dt_i3 = 0;
-    ERTS_DECLARE_DUMMY(Sint64 dt_i4) = 0;
+    Sint64 dt_i4 = 0;
     char *dt_utag = NULL;
-    ERTS_DECLARE_DUMMY(char *dt_s1) = NULL;
+    char *dt_s1 = NULL;
     dt_private *dt_priv = get_dt_private(dt_driver_io_worker_base);
 #endif
-Fortsätt rensa och ifdeffa här
 
     TRACE_C('v');
 
@@ -3102,9 +3117,15 @@ Fortsätt rensa och ifdeffa här
     switch (command) {
 
     case FILE_CLOSE: {
+#ifdef HAVE_DTRACE
 	dt_utag = EV_CHAR_P(ev, p, q);
+#endif
 	flush_read(desc);
-	if (flush_write_check_error(desc, &err, dt_priv, dt_utag) < 0) {
+	if (flush_write_check_error(desc, &err
+#ifdef HAVE_DTRACE
+				    , dt_priv, dt_utag
+#endif
+				    ) < 0) {
 	    reply_posix_error(desc, err);
 	    goto done;
 	}
@@ -3115,9 +3136,11 @@ Fortsätt rensa och ifdeffa här
 		d->command = command;
 		d->reply = !0;
 		d->fd = desc->fd;
-		dt_i1 = d->fd;
 		d->flags = desc->flags;
+#ifdef HAVE_DTRACE
+		dt_i1 = d->fd;
 		dt_i2 = d->flags;
+#endif
 		d->invoke = invoke_close;
 		d->free = free_data;
 		d->level = 2;
@@ -3140,8 +3163,14 @@ Fortsätt rensa och ifdeffa här
 	    reply_posix_error(desc, EINVAL);
 	    goto done;
 	}
+#ifdef HAVE_DTRACE
 	dt_utag = EV_CHAR_P(ev, p, q);
-	if (flush_write_check_error(desc, &err, dt_priv, dt_utag) < 0) {
+#endif
+	if (flush_write_check_error(desc, &err
+#ifdef HAVE_DTRACE
+				    , dt_priv, dt_utag
+#endif
+				    ) < 0) {
 	    reply_posix_error(desc, err);
 	    goto done;
 	}
@@ -3149,7 +3178,11 @@ Fortsätt rensa och ifdeffa här
 	if (desc->read_bufsize == 0 && desc->read_binp != NULL && desc->read_size > 0) {
 	    /* We have allocated a buffer for line mode but should not really have a 
 	       read-ahead buffer... */
-	    if (lseek_flush_read(desc, &err, dt_priv) < 0) {
+	    if (lseek_flush_read(desc, &err
+#ifdef HAVE_DTRACE
+				 , dt_priv, dt_utag
+#endif
+				 ) < 0) {
 		reply_posix_error(desc, err);
 		goto done;
 	    }
@@ -3225,14 +3258,16 @@ Fortsätt rensa och ifdeffa här
 	d->command = command;
 	d->reply = !0;
 	d->fd = desc->fd;
-	dt_i1 = d->fd;
 	d->flags = desc->flags;
-	dt_i2 = d->flags;
 	d->c.read.binp = desc->read_binp;
 	d->c.read.bin_offset = desc->read_offset + desc->read_size;
 	d->c.read.bin_size = desc->read_binp->orig_size - d->c.read.bin_offset;
 	d->c.read.size = size;
+#ifdef HAVE_DTRACE
+	dt_i1 = d->fd;
+	dt_i2 = d->flags;
 	dt_i3 = d->c.read.size;
+#endif
 	driver_binary_inc_refc(d->c.read.binp);
 	d->invoke = invoke_read;
 	d->free = free_read;
@@ -3250,12 +3285,22 @@ Fortsätt rensa och ifdeffa här
 	 *    allocated binary + dealing with offsets and lengts are done in file_async ready
 	 *    for this OP.
 	 */
+#ifdef HAVE_DTRACE
 	dt_utag = EV_CHAR_P(ev, p, q);
-	if (flush_write_check_error(desc, &err, dt_priv, dt_utag) < 0) {
+#endif
+	if (flush_write_check_error(desc, &err
+#ifdef HAVE_DTRACE
+				    , dt_priv, dt_utag
+#endif
+				    ) < 0) {
 	    reply_posix_error(desc, err);
 	    goto done;
 	}
-	if (ev->size != 1+strlen(dt_utag)+1) {
+	if (ev->size != 1
+#ifdef HAVE_DTRACE
+	    + FILENAME_BYTELEN(dt_utag) + FILENAME_CHARSIZE
+#endif
+	    ) {
 	    /* Wrong command length */
 	    reply_posix_error(desc, EINVAL);
 	    goto done;
@@ -3307,41 +3352,43 @@ Fortsätt rensa och ifdeffa här
 	d->command = command;
 	d->reply = !0;
 	d->fd = desc->fd;
-	dt_i1 = d->fd;
 	d->flags = desc->flags;
-	dt_i2 = d->flags;
 	d->c.read_line.binp = desc->read_binp;
 	d->c.read_line.read_offset = desc->read_offset;
 	d->c.read_line.read_size = desc->read_size;
+#ifdef HAVE_DTRACE
+	dt_i1 = d->fd;
+	dt_i2 = d->flags;
 	dt_i3 = d->c.read_line.read_offset;
+#endif
 #if !ALWAYS_READ_LINE_AHEAD
 	d->c.read_line.read_ahead = (desc->read_bufsize > 0);
-#endif 
+#ifdef HAVE_DTRACE
 	dt_i4 = d->c.read_line.read_ahead;
+#endif
+#endif 
 	driver_binary_inc_refc(d->c.read.binp);
 	d->invoke = invoke_read_line;
 	d->free = free_read_line;
 	d->level = 1;
 	cq_enq(desc, d);
     } goto done;
-    case FILE_WRITE: { /* XXX: PaN Change order of data vs dtrace tag! */
+    case FILE_WRITE: { /* Dtrace: The dtrace user tag is not last in message, 
+			  but follows the message tag directly. 
+			  This is handled specially in prim_file.erl */
 	ErlDrvSizeT skip = 1;
 	ErlDrvSizeT size = ev->size - skip;
 
+#ifdef HAVE_DTRACE
 	dt_utag = EV_CHAR_P(ev, p, q);
-	skip += strlen(dt_utag) + 1;
+	skip += FILENAME_BYTELEN(dt_utag) + FILENAME_CHARSIZE;
 	size = ev->size - skip;
-	/*
-	 * Interesting dependency on using port # for key to async
-	 * I/O worker pool thread: lseek_flush_read() can enqueue a
-	 * lseek() op.  If that lseek() were scheduled on a different
-	 * thread than the write that we'll enqueue later in this case,
-	 * then Bad Things could happen.  This DTrace work is probably
-	 * well worthwhile to get a sense of how often there's head-of-
-	 * line blocking/unfairness during busy file I/O because of the
-	 * mapping of port #/key -> thread.
-	 */
-	if (lseek_flush_read(desc, &err, dt_priv, dt_utag) < 0) {
+#endif
+	if (lseek_flush_read(desc, &err
+#ifdef HAVE_DTRACE
+			     , dt_priv, dt_utag
+#endif
+			     ) < 0) {
 	    reply_posix_error(desc, err);
 	    goto done;
 	}
@@ -3368,8 +3415,11 @@ Fortsätt rensa och ifdeffa här
 		driver_set_timer(desc->port, desc->write_delay);
 	    }
 	} else {
-	    if ((d = async_write(desc, &err, !0, size,
-				 &dt_i1, &dt_i2, &dt_i3)) == NULL) {
+	    if ((d = async_write(desc, &err, !0, size
+#ifdef HAVE_DTRACE
+				 , &dt_i1, &dt_i2, &dt_i3
+#endif
+				 )) == NULL) {
 		MUTEX_UNLOCK(desc->q_mtx);
 		reply_posix_error(desc, err);
 		goto done;
@@ -3379,27 +3429,46 @@ Fortsätt rensa och ifdeffa här
 	}
     } goto done; /* case FILE_WRITE */
 
-    case FILE_PWRITEV: { /* XXX: PaN Change order of data vs dtrace tag (or?)! */
+    case FILE_PWRITEV: { /* Dtrace: The dtrace user tag is not last in message, 
+			   but follows the message tag directly. 
+			   This is handled specially in prim_file.erl */
 	Uint32 i, j, n; 
 	size_t total;
-	char tmp;
+#ifdef HAVE_DTRACE
+	char dt_tmp;
 	int dt_utag_bytes = 1;
 
 	dt_utag = EV_CHAR_P(ev, p, q);
-	while (EV_GET_CHAR(ev, &tmp, &p, &q) && tmp != '\0') {
+	/* This will work for UTF-8, but not for UTF-16 - extra reminder here */
+#ifdef FILENAMES_16BIT 
+#error 16bit characters in filenames and dtrace in combination is not supported.
+#endif
+	while (EV_GET_CHAR(ev, &dt_tmp, &p, &q) && dt_tmp != '\0') {
 	    dt_utag_bytes++;
 	}
-	if (ev->size < 1+4+dt_utag_bytes
+#endif
+	if (ev->size < 1+4
+#ifdef HAVE_DTRACE
+	    + dt_utag_bytes
+#endif
 	    || !EV_GET_UINT32(ev, &n, &p, &q)) {
 	    /* Buffer too short to contain even the number of pos/size specs */
 	    reply_Uint_posix_error(desc, 0, EINVAL);
 	    goto done;
 	}
-	if (lseek_flush_read(desc, &err, dt_priv, dt_utag) < 0) {
+	if (lseek_flush_read(desc, &err
+#ifdef HAVE_DTRACE
+			     , dt_priv, dt_utag
+#endif
+			     ) < 0) {
 	    reply_Uint_posix_error(desc, 0, err);
 	    goto done;
 	}
-	if (flush_write_check_error(desc, &err, dt_priv, dt_utag) < 0) {
+	if (flush_write_check_error(desc, &err
+#ifdef HAVE_DTRACE
+				    , dt_priv, dt_utag
+#endif
+				    ) < 0) {
 	    reply_Uint_posix_error(desc, 0, err);
 	    goto done;
 	}
@@ -3412,7 +3481,11 @@ Fortsätt rensa och ifdeffa här
 	    }
 	    goto done;
 	}
-	if (ev->size < 1+4+8*(2*n)+dt_utag_bytes) {
+	if (ev->size < 1+4+8*(2*n)
+#ifdef HAVE_DTRACE
+	    + dt_utag_bytes
+#endif
+	    ) {
 	    /* Buffer too short to contain even the pos/size specs */
 	    reply_Uint_posix_error(desc, 0, EINVAL);
 	    goto done;
@@ -3426,9 +3499,11 @@ Fortsätt rensa och ifdeffa här
 	d->command = command;
 	d->reply = !0;
 	d->fd = desc->fd;
-	dt_i1 = d->fd;
 	d->flags = desc->flags;
+#ifdef HAVE_DTRACE
+	dt_i1 = d->fd;
 	dt_i2 = d->flags;
+#endif
 	d->c.pwritev.port = desc->port;
 	d->c.pwritev.q_mtx = desc->q_mtx;
 	d->c.pwritev.n = n;
@@ -3466,14 +3541,20 @@ Fortsätt rensa och ifdeffa här
 	    }
 	}
 	d->c.pwritev.size = total;
+#ifdef HAVE_DTRACE
 	dt_i3 = d->c.pwritev.size;
+#endif
 	d->c.pwritev.free_size = 0;
 	if (j == 0) {
 	    /* Trivial case - nothing to write */
 	    EF_FREE(d);
 	    reply_Uint(desc, 0);
 	} else {
-	    ErlDrvSizeT skip = 1 + 4 + 8 * (2*n) + dt_utag_bytes;
+	    ErlDrvSizeT skip = 1 + 4 + 8 * (2*n) 
+#ifdef HAVE_DTRACE
+		+ dt_utag_bytes
+#endif
+		;
 	    if (skip + total != ev->size) {
 		/* Actual amount of data does not match 
 		 * total of all pos/size specs
@@ -3494,33 +3575,55 @@ Fortsätt rensa och ifdeffa här
 	}
     } goto done; /* case FILE_PWRITEV: */
 
-    case FILE_PREADV: { /* XXX: PaN Change order of data vs dtrace tag! */
+    case FILE_PREADV: { /* Dtrace: The dtrace user tag is not last in message, 
+			   but follows the message tag directly. 
+			   This is handled specially in prim_file.erl */
 	register void * void_ptr;
 	Uint32 i, n;
 	ErlIOVec *res_ev;
-	char tmp;
+#ifdef HAVE_DTRACE
+	char dt_tmp;
 	int dt_utag_bytes = 1;
-
+	/* This will work for UTF-8, but not for UTF-16 - extra reminder here */
+#ifdef FILENAMES_16BIT 
+#error 16bit characters in filenames and dtrace in combination is not supported.
+#endif
 	dt_utag = EV_CHAR_P(ev, p, q);
-	while (EV_GET_CHAR(ev, &tmp, &p, &q) && tmp != '\0') {
+	while (EV_GET_CHAR(ev, &dt_tmp, &p, &q) && dt_tmp != '\0') {
 	    dt_utag_bytes++;
 	}
-	if (lseek_flush_read(desc, &err, dt_priv, dt_utag) < 0) {
+#endif
+	if (lseek_flush_read(desc, &err
+#ifdef HAVE_DTRACE
+			     , dt_priv, dt_utag
+#endif
+			     ) < 0) {
 	    reply_posix_error(desc, err);
 	    goto done;
 	}
-	if (flush_write_check_error(desc, &err, dt_priv, dt_utag) < 0) {
+	if (flush_write_check_error(desc, &err
+#ifdef HAVE_DTRACE
+				    , dt_priv, dt_utag
+#endif
+				    ) < 0) {
 	    reply_posix_error(desc, err);
 	    goto done;
 	}
-	if (ev->size < 1+8+dt_utag_bytes
+	if (ev->size < 1+8
+#ifdef HAVE_DTRACE
+	    + dt_utag_bytes
+#endif
 	    || !EV_GET_UINT32(ev, &n, &p, &q)
 	    || !EV_GET_UINT32(ev, &n, &p, &q)) {
 	    /* Buffer too short to contain even the number of pos/size specs */
 	    reply_posix_error(desc, EINVAL);
 	    goto done;
 	}
-	if (ev->size < 1+8+8*(2*n)+dt_utag_bytes) {
+	if (ev->size < 1+8+8*(2*n)
+#ifdef HAVE_DTRACE
+	    + dt_utag_bytes
+#endif
+	    ) {
 	    /* Buffer wrong length to contain the pos/size specs */
 	    reply_posix_error(desc, EINVAL);
 	    goto done;
@@ -3539,9 +3642,11 @@ Fortsätt rensa och ifdeffa här
 	d->command = command;
 	d->reply = !0;
 	d->fd = desc->fd;
-	dt_i1 = d->fd;
 	d->flags = desc->flags;
+#ifdef HAVE_DTRACE
+	dt_i1 = d->fd;
 	dt_i2 = d->flags;
+#endif
 	d->c.preadv.n = n;
 	d->c.preadv.cnt = 0;
 	d->c.preadv.size = 0;
@@ -3569,7 +3674,9 @@ Fortsätt rensa och ifdeffa här
 #else
 	    size = ((size_t)sizeH<<32) | sizeL;
 #endif
+#ifdef HAVE_DTRACE
 	    dt_i3 += size;
+#endif
 	    if (! (res_ev->binv[i] = driver_alloc_binary(size))) {
 		reply_posix_error(desc, ENOMEM);
 		break;
@@ -3626,17 +3733,30 @@ Fortsätt rensa och ifdeffa här
 	    reply_posix_error(desc, EINVAL);
 	    goto done;
 	}
+#ifdef HAVE_DTRACE
 	dt_utag = EV_CHAR_P(ev, p, q);
-	if (lseek_flush_read(desc, &err, dt_priv, dt_utag) < 0) {
+#endif
+	if (lseek_flush_read(desc, &err
+#ifdef HAVE_DTRACE
+			     , dt_priv, dt_utag
+#endif
+			     ) < 0) {
 	    reply_posix_error(desc, err);
 	    goto done;
 	}
-	if (flush_write_check_error(desc, &err, dt_priv, dt_utag) < 0) {
+	if (flush_write_check_error(desc, &err
+#ifdef HAVE_DTRACE
+				    , dt_priv, dt_utag
+#endif
+				    ) < 0) {
 	    reply_posix_error(desc, err);
 	    goto done;
 	}
-	if ((d = async_lseek(desc, &err, !0, offset, origin,
-			     &dt_i1, &dt_i2, &dt_i3)) == NULL) {
+	if ((d = async_lseek(desc, &err, !0, offset, origin
+#ifdef HAVE_DTRACE
+			     , &dt_i1, &dt_i2, &dt_i3
+#endif
+			     )) == NULL) {
 	    reply_posix_error(desc, err);
 	    goto done;
 	}
@@ -3649,11 +3769,24 @@ Fortsätt rensa och ifdeffa här
 	    reply_posix_error(desc, ENOENT);
 	    goto done;
 	}
+#ifndef HAVE_DTRACE
+	/* In the dtrace case, the iov has an extra element, the dtrace utag - we will need another test to see that
+	   the filename is in a single buffer: */
 	if (ev->size-1 != ev->iov[q].iov_len-p) {
 	    /* Name not in one single buffer */
 	    reply_posix_error(desc, EINVAL);
 	    goto done;
 	}
+#else
+	/* In the dtrace case, the iov has an extra element, the dtrace utag - we will need another test to see that
+	   the filename is in a single buffer: */
+	if (((byte *)ev->iov[q].iov_base)[ev->iov[q].iov_len-1] != '\0') {
+	    /* Name not in one single buffer */
+	    reply_posix_error(desc, EINVAL);
+	    goto done;
+	}
+#	
+#endif
 	filename = EV_CHAR_P(ev, p, q);
 	d = EF_ALLOC(sizeof(struct t_data) -1 + FILENAME_BYTELEN(filename) + FILENAME_CHARSIZE);
 	if (! d) {
@@ -3664,8 +3797,10 @@ Fortsätt rensa och ifdeffa här
 	d->reply = !0;
 	/* Copy name */
 	FILENAME_COPY(d->b, filename);
+#ifdef HAVE_DTRACE
 	dt_s1 = d->b;
-	dt_utag = filename + strlen(d->b) + 1;
+	dt_utag = filename + FILENAME_BYTELEN(d->b) + FILENAME_CHARSIZE;
+#endif
 	d->c.read_file.binp = NULL;
 	d->invoke = invoke_read_file;
 	d->free = free_read_file;
@@ -3704,12 +3839,22 @@ Fortsätt rensa och ifdeffa här
 	    reply_posix_error(desc, EINVAL);
 	    goto done;
 	}
+#ifdef HAVE_DTRACE
 	dt_utag = EV_CHAR_P(ev, p, q);
-	if (lseek_flush_read(desc, &err, dt_priv, dt_utag) < 0) {
+#endif
+	if (lseek_flush_read(desc, &err
+#ifdef HAVE_DTRACE
+			     , dt_priv, dt_utag
+#endif
+			     ) < 0) {
 	    reply_posix_error(desc, err);
 	    goto done;
 	}
-	if (flush_write_check_error(desc, &err, dt_priv, dt_utag) < 0) {
+	if (flush_write_check_error(desc, &err
+#ifdef HAVE_DTRACE
+				    , dt_priv, dt_utag
+#endif
+				    ) < 0) {
 	    reply_posix_error(desc, err);
 	    goto done;
 	}
@@ -3726,13 +3871,15 @@ Fortsätt rensa och ifdeffa här
 	d->command = command;
 	d->reply = !0;
 	d->fd = desc->fd;
-	dt_i1 = d->fd;
 	d->flags = desc->flags;
-	dt_i2 = d->flags;
 	d->c.preadv.offsets[0] = hdr_offset;
-	dt_i3 = d->c.preadv.offsets[0];
 	d->c.preadv.size = max_size;
+#ifdef HAVE_DTRACE
+	dt_i1 = d->fd;
+	dt_i2 = d->flags;
+	dt_i3 = d->c.preadv.offsets[0];
 	dt_i4 = d->c.preadv.size;
+#endif
 	res_ev = &d->c.preadv.eiov;
 	/* XXX possible alignment problems here for weird machines */
 	res_ev->iov = void_ptr = d + 1;
@@ -3754,12 +3901,17 @@ Fortsätt rensa och ifdeffa här
 	    reply_posix_error(desc, EINVAL);
 	    goto done;
 	}
+#ifdef HAVE_DTRACE
 	dt_i1 = opt;
 	dt_utag = EV_CHAR_P(ev, p, q);
+#endif
 	switch (opt) {
 	case FILE_OPT_DELAYED_WRITE: {
 	    Uint32 sizeH, sizeL, delayH, delayL;
-	    if (ev->size != 1+1+4*sizeof(Uint32)+strlen(dt_utag)+1
+	    if (ev->size != 1+1+4*sizeof(Uint32)
+#ifdef HAVE_DTRACE
+		+ FILENAME_BYTELEN(dt_utag) + FILENAME_CHARSIZE
+#endif
 		|| !EV_GET_UINT32(ev, &sizeH, &p, &q)
 		|| !EV_GET_UINT32(ev, &sizeL, &p, &q)
 		|| !EV_GET_UINT32(ev, &delayH, &p, &q)
@@ -3786,13 +3938,18 @@ Fortsätt rensa och ifdeffa här
 #else
 	    desc->write_delay = ((unsigned long)delayH << 32) | delayL;
 #endif
+#ifdef HAVE_DTRACE
 	    dt_i2 = desc->write_delay;
+#endif
 	    TRACE_C('K');
 	    reply_ok(desc);
 	} goto done;
 	case FILE_OPT_READ_AHEAD: {
 	    Uint32 sizeH, sizeL;
-	    if (ev->size != 1+1+2*sizeof(Uint32)+strlen(dt_utag)+1
+	    if (ev->size != 1+1+2*sizeof(Uint32)
+#ifdef HAVE_DTRACE
+		+ FILENAME_BYTELEN(dt_utag)+FILENAME_CHARSIZE
+#endif
 		|| !EV_GET_UINT32(ev, &sizeH, &p, &q)
 		|| !EV_GET_UINT32(ev, &sizeL, &p, &q)) {
 		/* Buffer has wrong length to contain the option values */
@@ -3808,7 +3965,9 @@ Fortsätt rensa och ifdeffa här
 #else
 	    desc->read_bufsize = ((size_t)sizeH << 32) | sizeL;
 #endif
+#ifdef HAVE_DTRACE
 	    dt_i2 = desc->read_bufsize;
+#endif
 	    TRACE_C('K');
 	    reply_ok(desc);
 	} goto done;
@@ -3880,11 +4039,19 @@ Fortsätt rensa och ifdeffa här
 
     } /* switch(command) */
 
-    if (lseek_flush_read(desc, &err, dt_priv, dt_utag) < 0) {
+    if (lseek_flush_read(desc, &err
+#ifdef HAVE_DTRACE
+			 , dt_priv, dt_utag
+#endif
+			 ) < 0) {
 	reply_posix_error(desc, err);
 	goto done;
     }
-    if (flush_write_check_error(desc, &err, dt_priv, dt_utag) < 0) {
+    if (flush_write_check_error(desc, &err
+#ifdef HAVE_DTRACE
+				, dt_priv, dt_utag
+#endif
+				) < 0) {
 	reply_posix_error(desc, err);
 	goto done;
     } else {

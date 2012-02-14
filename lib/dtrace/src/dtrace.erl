@@ -40,7 +40,7 @@
 -export([init/0, available/0,
          user_trace_s1/1, % TODO: unify with pid & tag args like user_trace_i4s4
          p/0, p/1, p/2, p/3, p/4, p/5, p/6, p/7, p/8]).
--export([put_utag/1, get_utag/0]).
+-export([put_utag/1, get_utag/0, get_utag_data/0, spread_utag/0]).
 
 -export([scaff/0]). % Development only
 -export([user_trace_i4s4/9]). % Know what you're doing!
@@ -192,21 +192,14 @@ user_trace_int(I1, I2, I3, I4, S1, S2, S3, S4) ->
 put_utag(Data) ->
     erlang:put_utag(unicode:characters_to_binary(Data)).
 
--spec get_utag() -> binary().
+-spec get_utag() -> binary() | undefined.
 get_utag() ->
     erlang:get_utag().
 
--spec get_utag_data() -> binary().
-%% Gets utag if set, otherwise spread utag data from last incoming message
-get_utag() ->
+-spec get_utag_data() -> binary() | undefined.
+%% Gets utag if set, otherwise the spread utag data from last incoming message
+get_utag_data() ->
     erlang:get_utag_data().
-
--spec get_drv_utag_data() -> binary().
-%% Same as get_utag_data, but data is preformatted for sending to a driver:
-%% Returns either NIL (non dtrace VM) or a binary with a prefixed size byte <<Size:8,Data/binary:Size>>. 
-%% Data is a string in UTF8.
-get_drv_utag_data() ->
-    erlang:get_drv_utag_data().
 
 -spec spread_utag() -> true.
 %% Makes the utag behave as a sequential trace token, will spread with messages to be picked up by someone using

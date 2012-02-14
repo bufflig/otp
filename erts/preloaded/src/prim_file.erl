@@ -268,7 +268,7 @@ advise(#file_descriptor{module = ?MODULE, data = {Port, _}},
 
 %% Returns {error, Reason} | ok.
 write(#file_descriptor{module = ?MODULE, data = {Port, _}}, Bytes) ->
-    case drv_command(Port, [?FILE_WRITE,Bytes]) of
+    case drv_command_nt(Port, [?FILE_WRITE,erlang:prepend_vm_utag_data(Bytes)],false,undefined) of
 	{ok, _Size} ->
 	    ok;
 	Error ->
@@ -283,8 +283,8 @@ pwrite(#file_descriptor{module = ?MODULE, data = {Port, _}}, L)
 pwrite_int(_, [], 0, [], []) ->
     ok;
 pwrite_int(Port, [], N, Spec, Data) ->
-    Header = list_to_binary([<<?FILE_PWRITEV, N:32>> | reverse(Spec)]),
-    case drv_command_raw(Port, [Header | reverse(Data)]) of
+    Header = list_to_binary([?FILE_PWRITEV, erlang:prepend_vm_utag_data(<<N:32>>) | reverse(Spec)]),
+    case drv_command_nt(Port, [Header | reverse(Data)], false, undefined) of
 	{ok, _Size} ->
 	    ok;
 	Error ->
@@ -402,7 +402,7 @@ pread(#file_descriptor{module = ?MODULE, data = {Port, _}}, L)
 pread_int(_, [], 0, []) ->
     {ok, []};
 pread_int(Port, [], N, Spec) ->
-    drv_command(Port, [<<?FILE_PREADV, 0:32, N:32>> | reverse(Spec)]);
+    drv_command_nt(Port, [?FILE_PREADV, erlang:prepend_vm_utag_data(<<0:32, N:32>>) | reverse(Spec)],false, undefined);
 pread_int(Port, [{Offs, Size} | T], N, Spec)
   when is_integer(Offs), is_integer(Size), 0 =< Size ->
     if
@@ -938,9 +938,6 @@ drv_close(Port) ->
 %% then closed after the result has been received.
 %% Returns {ok, Result} or {error, Reason}.
 
-drv_command_raw(Port, Command) ->
-    drv_command(Port, Command, false, undefined).
-
 drv_command(Port, Command) ->
     drv_command(Port, Command, undefined).
 
@@ -956,7 +953,7 @@ drv_command(Port, Command, R) ->
     end.
 
 drv_command(Port, Command, Validated, R) when is_port(Port) ->
-    try erlang:port_command(Port, [Command|erlang:get_drv_utag_data()]) of
+    try erlang:port_command(Port, erlang:append_vm_utag_data(Command)) of
 	true ->
 	    drv_get_response(Port, R)
     catch
@@ -984,6 +981,27 @@ drv_command({Driver, Portopts}, Command, Validated, R) ->
 	    Result;
 	Error ->
 	    Error
+    end.
+drv_command_nt(Port, Command, Validated, R) when is_port(Port) ->
+    try erlang:port_command(Port, Command) of
+	true ->
+	    drv_get_response(Port, R)
+    catch
+	%% If the Command is valid, knowing that the port is a port,
+	%% a badarg error must mean it is a dead port, that is:
+	%% a currently invalid filehandle, -> einval, not badarg.
+	error:badarg when Validated ->
+	    {error, einval};
+	error:badarg ->
+	    try erlang:iolist_size(Command) of
+		_ -> % Valid
+		    {error, einval}
+	    catch
+		error:_ ->
+		    {error, badarg}
+	    end;
+	error:Reason ->
+	    {error, Reason}
     end.
 
 
