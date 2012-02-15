@@ -1892,23 +1892,49 @@ void process_main(void)
 	 save_calls(c_p, &exp_receive);
      }
      if (ERL_MESSAGE_TOKEN(msgp) == NIL) {
-	 SEQ_TRACE_TOKEN(c_p) = NIL;
+#ifdef HAVE_DTRACE
+	 if (DT_UTAG(c_p) != NIL) {
+	     if (DT_UTAG_FLAGS(c_p) & DT_UTAG_PERMANENT) {
+		 SEQ_TRACE_TOKEN(c_p) = am_have_dt_tag;
+	     } else {
+		 DT_UTAG(c_p) = NIL;
+		 SEQ_TRACE_TOKEN(c_p) = NIL;
+	     }
+	 } else {
+#endif
+	     SEQ_TRACE_TOKEN(c_p) = NIL;
+#ifdef HAVE_DTRACE
+	 }
+	 DT_UTAG_FLAGS(c_p) &= ~DT_UTAG_SPREADING;
+#endif
      } else if (ERL_MESSAGE_TOKEN(msgp) != am_undefined) {
 	 Eterm msg;
 	 SEQ_TRACE_TOKEN(c_p) = ERL_MESSAGE_TOKEN(msgp);
-	 ASSERT(is_tuple(SEQ_TRACE_TOKEN(c_p)));
-	 ASSERT(SEQ_TRACE_TOKEN_ARITY(c_p) == 5);
-	 ASSERT(is_small(SEQ_TRACE_TOKEN_SERIAL(c_p)));
-	 ASSERT(is_small(SEQ_TRACE_TOKEN_LASTCNT(c_p)));
-	 ASSERT(is_small(SEQ_TRACE_TOKEN_FLAGS(c_p)));
-	 ASSERT(is_pid(SEQ_TRACE_TOKEN_SENDER(c_p)));
-	 c_p->seq_trace_lastcnt = unsigned_val(SEQ_TRACE_TOKEN_SERIAL(c_p));
-	 if (c_p->seq_trace_clock < unsigned_val(SEQ_TRACE_TOKEN_SERIAL(c_p))) {
-	     c_p->seq_trace_clock = unsigned_val(SEQ_TRACE_TOKEN_SERIAL(c_p));
+#ifdef HAVE_DTRACE
+	 if (ERL_MESSAGE_TOKEN(msgp) == am_have_dt_tag) {
+	     if (DT_UTAG(c_p) == NIL) {
+		 DT_UTAG(c_p) = ERL_MESSAGE_DT_UTAG(msgp);
+	     }
+	     DT_UTAG_FLAGS(c_p) |= DT_UTAG_SPREADING;
+	     fprintf(stderr,"XXX: PaN: Dtrace -> receive tag\r\n");
+	 } else {
+#endif
+	     ASSERT(is_tuple(SEQ_TRACE_TOKEN(c_p)));
+	     ASSERT(SEQ_TRACE_TOKEN_ARITY(c_p) == 5);
+	     ASSERT(is_small(SEQ_TRACE_TOKEN_SERIAL(c_p)));
+	     ASSERT(is_small(SEQ_TRACE_TOKEN_LASTCNT(c_p)));
+	     ASSERT(is_small(SEQ_TRACE_TOKEN_FLAGS(c_p)));
+	     ASSERT(is_pid(SEQ_TRACE_TOKEN_SENDER(c_p)));
+	     c_p->seq_trace_lastcnt = unsigned_val(SEQ_TRACE_TOKEN_SERIAL(c_p));
+	     if (c_p->seq_trace_clock < unsigned_val(SEQ_TRACE_TOKEN_SERIAL(c_p))) {
+		 c_p->seq_trace_clock = unsigned_val(SEQ_TRACE_TOKEN_SERIAL(c_p));
+	     }
+	     msg = ERL_MESSAGE_TERM(msgp);
+	     seq_trace_output(SEQ_TRACE_TOKEN(c_p), msg, SEQ_TRACE_RECEIVE, 
+			      c_p->id, c_p);
+#ifdef HAVE_DTRACE
 	 }
-	 msg = ERL_MESSAGE_TERM(msgp);
-	 seq_trace_output(SEQ_TRACE_TOKEN(c_p), msg, SEQ_TRACE_RECEIVE, 
-			  c_p->id, c_p);
+#endif
      }
      if (DTRACE_ENABLED(message_receive)) {
          Eterm token2 = NIL;

@@ -2472,6 +2472,13 @@ offset_mqueue(Process *p, Sint offs, char* area, Uint area_size)
 	if (is_boxed(mesg) && in_area(ptr_val(mesg), area, area_size)) {
 	    ERL_MESSAGE_TOKEN(mp) = offset_ptr(mesg, offs);
         }
+#ifdef HAVE_DTRACE
+	mesg = ERL_MESSAGE_DT_UTAG(mp);
+	if (is_boxed(mesg) && in_area(ptr_val(mesg), area, area_size)) {
+	    ERL_MESSAGE_DT_UTAG(mp) = offset_ptr(mesg, offs);
+        }
+#endif	
+	
         ASSERT((is_nil(ERL_MESSAGE_TOKEN(mp)) ||
 		is_tuple(ERL_MESSAGE_TOKEN(mp)) ||
 		is_atom(ERL_MESSAGE_TOKEN(mp))));

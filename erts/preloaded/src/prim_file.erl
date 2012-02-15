@@ -423,9 +423,9 @@ pread(#file_descriptor{module = ?MODULE, data = {Port, _}}, Offs, Size)
     if
 	-(?LARGEFILESIZE) =< Offs, Offs < ?LARGEFILESIZE,
 	Size < ?LARGEFILESIZE ->
-	    case drv_command(Port, 
-			     <<?FILE_PREADV, 0:32, 1:32,
-			      Offs:64/signed, Size:64>>) of
+	    case drv_command_nt(Port, 
+				[?FILE_PREADV, erlang:prepend_vm_utag_data(<<0:32, 1:32,
+									     Offs:64/signed, Size:64>>)], false, undefined) of
 		{ok, [eof]} ->
 		    eof;
 		{ok, [Data]} ->

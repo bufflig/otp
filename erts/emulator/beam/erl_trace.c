@@ -994,9 +994,13 @@ seq_trace_update_send(Process *p)
 {
     Eterm seq_tracer = erts_get_system_seq_tracer();
     ASSERT((is_tuple(SEQ_TRACE_TOKEN(p)) || is_nil(SEQ_TRACE_TOKEN(p))));
-    if ( (p->id == seq_tracer) || (SEQ_TRACE_TOKEN(p) == NIL))
+    if ( (p->id == seq_tracer) || (SEQ_TRACE_TOKEN(p) == NIL)
+#ifdef HAVE_DTRACE
+	 || (SEQ_TRACE_TOKEN(p) == am_have_dt_tag)
+#endif
+	 ) {
 	return 0;
-
+    }
     SEQ_TRACE_TOKEN_SENDER(p) = p->id; /* Internal pid */
     SEQ_TRACE_TOKEN_SERIAL(p) = 
 	make_small(++(p -> seq_trace_clock));

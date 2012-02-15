@@ -7183,6 +7183,10 @@ erl_create_process(Process* parent, /* Parent of process (default group leader).
     p->seq_trace_lastcnt = 0;
     p->seq_trace_clock = 0;
     SEQ_TRACE_TOKEN(p) = NIL;
+#ifdef HAVE_DTRACE
+    DT_UTAG(p) = NIL;
+    DT_UTAG_FLAGS(P) = 0;
+#endif
     p->parent = parent->id == ERTS_INVALID_PID ? NIL : parent->id;
 
 #ifdef HYBRID
@@ -7774,7 +7778,11 @@ static ERTS_INLINE void
 send_exit_message(Process *to, ErtsProcLocks *to_locksp,
 		  Eterm exit_term, Uint term_size, Eterm token)
 {
-    if (token == NIL) {
+    if (token == NIL 
+#ifdef HAVE_DTRACE
+	|| token == am_have_dt_tag
+#endif
+	) {
 	Eterm* hp;
 	Eterm mess;
 	ErlHeapFragment* bp;
@@ -7904,7 +7912,11 @@ send_exit_signal(Process *c_p,		/* current process if and only
 
     if (ERTS_PROC_IS_TRAPPING_EXITS(rp)
 	&& (reason != am_kill || (flags & ERTS_XSIG_FLG_IGN_KILL))) {
-	if (is_not_nil(token) && token_update)
+	if (is_not_nil(token) 
+#ifdef HAVE_DTRACE
+	    && token != am_have_dt_tag
+#endif
+	    && token_update)
 	    seq_trace_update_send(token_update);
 	if (is_value(exit_tuple))
 	    send_exit_message(rp, rp_locks, exit_tuple, exit_tuple_sz, token);

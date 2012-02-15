@@ -1944,7 +1944,11 @@ do_send(Process *p, Eterm to, Eterm msg, int suspend) {
 	if (ERTS_PROC_GET_SAVED_CALLS_BUF(p))
 	    save_calls(p, &exp_send);
 	
-	if (SEQ_TRACE_TOKEN(p) != NIL) {
+	if (SEQ_TRACE_TOKEN(p) != NIL
+#ifdef HAVE_DTRACE
+	    && SEQ_TRACE_TOKEN(p) != am_have_dt_utag
+#endif
+	    ) {
 	    seq_trace_update_send(p);
 	    seq_trace_output(SEQ_TRACE_TOKEN(p), msg, 
 			     SEQ_TRACE_SEND, portid, p);
@@ -4147,13 +4151,21 @@ BIF_RETTYPE system_flag_2(BIF_ALIST_2)
 	for (i = 0; i < erts_max_processes; i++) {
 	    if (process_tab[i] != (Process*) 0) {
 		Process* p = process_tab[i];
+#ifdef HAVE_DTRACE
+		p->seq_trace_token = (p->dt_utag != NIL) ? am_have_dt_tag : NIL;
+#else
 		p->seq_trace_token = NIL;
+#endif
 		p->seq_trace_clock = 0;
 		p->seq_trace_lastcnt = 0;
 		ERTS_SMP_MSGQ_MV_INQ2PRIVQ(p);
 		mp = p->msg.first;
 		while(mp != NULL) {
+#ifdef HAVE_DTRACE
+		    ERL_MESSAGE_TOKEN(mp) = (ERL_MESSAGE_DT_UTAG(mp) != NIL) ? am_have_dt_utag : NIL;
+#else
 		    ERL_MESSAGE_TOKEN(mp) = NIL;
+#endif
 		    mp = mp->next;
 		}
 	    }
