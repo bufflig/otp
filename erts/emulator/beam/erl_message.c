@@ -927,7 +927,10 @@ erts_send_message(Process* sender,
 #endif
 
 	bp = new_message_buffer(msize + seq_trace_size 
-				+ dt_utag_size);
+#ifdef HAVE_DTRACE
+				+ dt_utag_size
+#endif
+				);
 	hp = bp->mem;
 
         BM_SWAP_TIMER(send,copy);
