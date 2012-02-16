@@ -1935,7 +1935,13 @@ setup_rootset(Process *p, Eterm *objv, int nobj, Rootset *rootset)
 	roots[n].sz = 1;
 	n++;
     }
-
+#ifdef HAVE_DTRACE
+    if (is_not_immed(p->dt_utag)) {
+	roots[n].v = &p->dt_utag;
+	roots[n].sz = 1;
+	n++;
+    }
+#endif
     ASSERT(is_nil(p->tracer_proc) ||
 	   is_internal_pid(p->tracer_proc) ||
 	   is_internal_port(p->tracer_proc));
