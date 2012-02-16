@@ -563,7 +563,11 @@ erts_queue_monitor_message(Process *p,
     ref_copy    = copy_struct(ref, ref_size, &hp, ohp);
 
     tup = TUPLE5(hp, am_DOWN, ref_copy, type, item_copy, reason_copy);
-    erts_queue_message(p, p_locksp, bp, tup, NIL);
+    erts_queue_message(p, p_locksp, bp, tup, NIL
+#ifdef HAVE_DTRACE
+		       , NIL
+#endif
+		       );
 }
 
 static BIF_RETTYPE
@@ -4152,7 +4156,7 @@ BIF_RETTYPE system_flag_2(BIF_ALIST_2)
 	    if (process_tab[i] != (Process*) 0) {
 		Process* p = process_tab[i];
 #ifdef HAVE_DTRACE
-		p->seq_trace_token = (p->dt_utag != NIL) ? am_have_dt_tag : NIL;
+		p->seq_trace_token = (p->dt_utag != NIL) ? am_have_dt_utag : NIL;
 #else
 		p->seq_trace_token = NIL;
 #endif

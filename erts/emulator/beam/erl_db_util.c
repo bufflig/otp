@@ -2205,7 +2205,7 @@ restart:
 	case matchIsSeqTrace:
 	    if (SEQ_TRACE_TOKEN(c_p) != NIL
 #ifdef HAVE_DTRACE
-		&& SEQ_TRACE_TOKEN(c_p) != am_have_dt_tag
+		&& SEQ_TRACE_TOKEN(c_p) != am_have_dt_utag
 #endif
 		)
 		*esp++ = am_true;
@@ -2233,7 +2233,7 @@ restart:
 	case matchGetSeqToken:
 	    if (SEQ_TRACE_TOKEN(c_p) == NIL
 #ifdef HAVE_DTRACE
-		|| SEQ_TRACE_TOKEN(c_p) == am_have_dt_tag
+		|| SEQ_TRACE_TOKEN(c_p) == am_have_dt_utag
 #endif
 		) 
 		*esp++ = NIL;

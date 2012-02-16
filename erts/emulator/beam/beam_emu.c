@@ -1895,7 +1895,7 @@ void process_main(void)
 #ifdef HAVE_DTRACE
 	 if (DT_UTAG(c_p) != NIL) {
 	     if (DT_UTAG_FLAGS(c_p) & DT_UTAG_PERMANENT) {
-		 SEQ_TRACE_TOKEN(c_p) = am_have_dt_tag;
+		 SEQ_TRACE_TOKEN(c_p) = am_have_dt_utag;
 	     } else {
 		 DT_UTAG(c_p) = NIL;
 		 SEQ_TRACE_TOKEN(c_p) = NIL;
@@ -1911,7 +1911,7 @@ void process_main(void)
 	 Eterm msg;
 	 SEQ_TRACE_TOKEN(c_p) = ERL_MESSAGE_TOKEN(msgp);
 #ifdef HAVE_DTRACE
-	 if (ERL_MESSAGE_TOKEN(msgp) == am_have_dt_tag) {
+	 if (ERL_MESSAGE_TOKEN(msgp) == am_have_dt_utag) {
 	     if (DT_UTAG(c_p) == NIL) {
 		 DT_UTAG(c_p) = ERL_MESSAGE_DT_UTAG(msgp);
 	     }

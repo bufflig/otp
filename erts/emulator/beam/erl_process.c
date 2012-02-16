@@ -673,7 +673,11 @@ reply_sched_wall_time(void *vswtrp)
 	hpp = &hp;
     }
 
-    erts_queue_message(rp, &rp_locks, bp, msg, NIL);
+    erts_queue_message(rp, &rp_locks, bp, msg, NIL
+#ifdef HAVE_DTRACE
+			   , NIL
+#endif
+		       );
 
     if (swtrp->req_sched == esdp->no)
 	rp_locks &= ~ERTS_PROC_LOCK_MAIN;
@@ -7185,7 +7189,7 @@ erl_create_process(Process* parent, /* Parent of process (default group leader).
     SEQ_TRACE_TOKEN(p) = NIL;
 #ifdef HAVE_DTRACE
     DT_UTAG(p) = NIL;
-    DT_UTAG_FLAGS(P) = 0;
+    DT_UTAG_FLAGS(p) = 0;
 #endif
     p->parent = parent->id == ERTS_INVALID_PID ? NIL : parent->id;
 
@@ -7780,7 +7784,7 @@ send_exit_message(Process *to, ErtsProcLocks *to_locksp,
 {
     if (token == NIL 
 #ifdef HAVE_DTRACE
-	|| token == am_have_dt_tag
+	|| token == am_have_dt_utag
 #endif
 	) {
 	Eterm* hp;
@@ -7790,7 +7794,11 @@ send_exit_message(Process *to, ErtsProcLocks *to_locksp,
 
 	hp = erts_alloc_message_heap(term_size, &bp, &ohp, to, to_locksp);
 	mess = copy_struct(exit_term, term_size, &hp, ohp);
-	erts_queue_message(to, to_locksp, bp, mess, NIL);
+	erts_queue_message(to, to_locksp, bp, mess, NIL
+#ifdef HAVE_DTRACE
+			   , NIL
+#endif
+			   );
     } else {
 	ErlHeapFragment* bp;
 	Eterm* hp;
@@ -7806,7 +7814,11 @@ send_exit_message(Process *to, ErtsProcLocks *to_locksp,
 	/* the trace token must in this case be updated by the caller */
 	seq_trace_output(token, mess, SEQ_TRACE_SEND, to->id, NULL);
 	temp_token = copy_struct(token, sz_token, &hp, &bp->off_heap);
-	erts_queue_message(to, to_locksp, bp, mess, temp_token);
+	erts_queue_message(to, to_locksp, bp, mess, temp_token
+#ifdef HAVE_DTRACE
+			   , NIL
+#endif
+			   );
     }
 }
 
@@ -7914,7 +7926,7 @@ send_exit_signal(Process *c_p,		/* current process if and only
 	&& (reason != am_kill || (flags & ERTS_XSIG_FLG_IGN_KILL))) {
 	if (is_not_nil(token) 
 #ifdef HAVE_DTRACE
-	    && token != am_have_dt_tag
+	    && token != am_have_dt_utag
 #endif
 	    && token_update)
 	    seq_trace_update_send(token_update);

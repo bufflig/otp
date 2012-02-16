@@ -393,7 +393,11 @@ erts_queue_dist_message(Process *rcvr,
                         receiver_name, size_object(msg), rcvr->msg.len,
                         tok_label, tok_lastcnt, tok_serial);
             }
-	    erts_queue_message(rcvr, rcvr_locks, mbuf, msg, token);
+	    erts_queue_message(rcvr, rcvr_locks, mbuf, msg, token
+#ifdef HAVE_DTRACE
+			       , NIL
+#endif
+			       );
     }
     else {
 	/* Enqueue message on external format */
@@ -401,7 +405,7 @@ erts_queue_dist_message(Process *rcvr,
 	ERL_MESSAGE_TERM(mp) = THE_NON_VALUE;
 #ifdef HAVE_DTRACE
 	ERL_MESSAGE_DT_UTAG(mp) = NIL;
-	if (token == am_have_dt_tag) {
+	if (token == am_have_dt_utag) {
 	    ERL_MESSAGE_TOKEN(mp) = NIL;
 	} else {
 #endif
@@ -908,13 +912,13 @@ erts_send_message(Process* sender,
 	BM_SWAP_TIMER(size,send);
 
 #ifdef HAVE_DTRACE
-	if (SEQ_TRACE_TOKEN(sender) != am_have_dt_tag) {
+	if (SEQ_TRACE_TOKEN(sender) != am_have_dt_utag) {
 #endif
 
 	    seq_trace_update_send(sender);
 	    seq_trace_output(SEQ_TRACE_TOKEN(sender), message, SEQ_TRACE_SEND, 
 			     receiver->id, sender);
-	    seq_trace_size = 6; /* TUPLE5 */,
+	    seq_trace_size = 6; /* TUPLE5 */
 #ifdef HAVE_DTRACE
 	}
 	if (DT_UTAG_FLAGS(sender) & DT_UTAG_SPREADING) {
@@ -1144,7 +1148,7 @@ erts_deliver_exit_message(Eterm from, Process *to, ErtsProcLocks *to_locksp,
 
     if (token != NIL
 #ifdef HAVE_DTRACE
-	&& token != am_have_dt_tag
+	&& token != am_have_dt_utag
 #endif
 	) {
 
@@ -1161,7 +1165,11 @@ erts_deliver_exit_message(Eterm from, Process *to, ErtsProcLocks *to_locksp,
 	/* the trace token must in this case be updated by the caller */
 	seq_trace_output(token, save, SEQ_TRACE_SEND, to->id, NULL);
 	temptoken = copy_struct(token, sz_token, &hp, &bp->off_heap);
-	erts_queue_message(to, to_locksp, bp, save, temptoken);
+	erts_queue_message(to, to_locksp, bp, save, temptoken
+#ifdef HAVE_DTRACE
+			   , NIL
+#endif
+			   );
     } else {
 	ErlOffHeap *ohp;
 	sz_reason = size_object(reason);
@@ -1178,7 +1186,11 @@ erts_deliver_exit_message(Eterm from, Process *to, ErtsProcLocks *to_locksp,
 		     ? from
 		     : copy_struct(from, sz_from, &hp, ohp));
 	save = TUPLE3(hp, am_EXIT, from_copy, mess);
-	erts_queue_message(to, to_locksp, bp, save, NIL);
+	erts_queue_message(to, to_locksp, bp, save, NIL
+#ifdef HAVE_DTRACE
+			   , NIL
+#endif
+			   );
     }
 }
 

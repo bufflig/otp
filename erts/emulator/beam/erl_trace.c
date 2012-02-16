@@ -125,8 +125,13 @@ do { \
     enqueue_sys_msg_unlocked(SYS_MSG_TYPE_TRACE, (FPID), (TPID), (MSG), (BP)); \
 } while(0)
 #else
+#ifdef HAVE_DTRACE
 #define ERTS_ENQ_TRACE_MSG(FPID, TPROC, MSG, BP) \
-  erts_queue_message((TPROC), NULL, (BP), (MSG), NIL)
+    erts_queue_message((TPROC), NULL, (BP), (MSG), NIL, NIL)
+#else
+#define ERTS_ENQ_TRACE_MSG(FPID, TPROC, MSG, BP) \
+    erts_queue_message((TPROC), NULL, (BP), (MSG), NIL)
+#endif
 #endif
 
 /*
@@ -583,7 +588,11 @@ profile_send(Eterm from, Eterm message) {
 	hp = erts_alloc_message_heap(sz, &bp, &off_heap, profile_p, 0);
 	msg = copy_struct(message, sz, &hp, &bp->off_heap);
 	
-    	erts_queue_message(profile_p, NULL, bp, msg, NIL);
+    	erts_queue_message(profile_p, NULL, bp, msg, NIL
+#ifdef HAVE_DTRACE
+			   , NIL
+#endif
+			   );
     }
 }
 
@@ -996,7 +1005,7 @@ seq_trace_update_send(Process *p)
     ASSERT((is_tuple(SEQ_TRACE_TOKEN(p)) || is_nil(SEQ_TRACE_TOKEN(p))));
     if ( (p->id == seq_tracer) || (SEQ_TRACE_TOKEN(p) == NIL)
 #ifdef HAVE_DTRACE
-	 || (SEQ_TRACE_TOKEN(p) == am_have_dt_tag)
+	 || (SEQ_TRACE_TOKEN(p) == am_have_dt_utag)
 #endif
 	 ) {
 	return 0;
@@ -1182,7 +1191,11 @@ seq_trace_output_generic(Eterm token, Eterm msg, Uint type,
 	enqueue_sys_msg_unlocked(SYS_MSG_TYPE_SEQTRACE, NIL, NIL, mess, bp);
 	erts_smp_mtx_unlock(&smq_mtx);
 #else
-	erts_queue_message(tracer, NULL, bp, mess, NIL); /* trace_token must be NIL here */
+	erts_queue_message(tracer, NULL, bp, mess, NIL
+#ifdef HAVE_DTRACE
+			   , NIL
+#endif
+			   ); /* trace_token must be NIL here */
 #endif
     }
 }
@@ -2473,7 +2486,11 @@ monitor_long_gc(Process *p, Uint time) {
 #ifdef ERTS_SMP
     enqueue_sys_msg(SYS_MSG_TYPE_SYSMON, p->id, NIL, msg, bp);
 #else
-    erts_queue_message(monitor_p, NULL, bp, msg, NIL);
+    erts_queue_message(monitor_p, NULL, bp, msg, NIL
+#ifdef HAVE_DTRACE
+			   , NIL
+#endif
+		       );
 #endif
 }
 
@@ -2545,7 +2562,11 @@ monitor_large_heap(Process *p) {
 #ifdef ERTS_SMP
     enqueue_sys_msg(SYS_MSG_TYPE_SYSMON, p->id, NIL, msg, bp);
 #else
-    erts_queue_message(monitor_p, NULL, bp, msg, NIL);
+    erts_queue_message(monitor_p, NULL, bp, msg, NIL
+#ifdef HAVE_DTRACE
+		       , NIL
+#endif
+		       );
 #endif
 }
 
@@ -2575,7 +2596,11 @@ monitor_generic(Process *p, Eterm type, Eterm spec) {
 #ifdef ERTS_SMP
     enqueue_sys_msg(SYS_MSG_TYPE_SYSMON, p->id, NIL, msg, bp);
 #else
-    erts_queue_message(monitor_p, NULL, bp, msg, NIL);
+    erts_queue_message(monitor_p, NULL, bp, msg, NIL
+#ifdef HAVE_DTRACE
+		       , NIL
+#endif
+		       );
 #endif
 
 }
@@ -3361,7 +3386,11 @@ sys_msg_dispatcher_func(void *unused)
 		}
 		else {
 		queue_proc_msg:
-		    erts_queue_message(proc,&proc_locks,smqp->bp,smqp->msg,NIL);
+		    erts_queue_message(proc,&proc_locks,smqp->bp,smqp->msg,NIL
+#ifdef HAVE_DTRACE
+				       , NIL
+#endif
+				       );
 #ifdef DEBUG_PRINTOUTS
 		    erts_fprintf(stderr, "delivered\n");
 #endif
