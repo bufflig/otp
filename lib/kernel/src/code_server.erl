@@ -151,8 +151,10 @@ reply(Pid, Res) ->
 loop(#state{supervisor=Supervisor}=State0) ->
     receive 
 	{code_call, Pid, Req} ->
+	    X = erlang:spread_utag(false),
 	    case handle_call(Req, {Pid, call}, State0) of
 		{reply, Res, State} ->
+		    erlang:restore_utag(X),
 		    reply(Pid, Res),
 		    loop(State);
 		{noreply, State} ->

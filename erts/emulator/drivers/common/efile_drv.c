@@ -3770,7 +3770,8 @@ file_outputv(ErlDrvData e, ErlIOVec *ev) {
 	    goto done;
 	}
 #ifndef HAVE_DTRACE
-	/* In the dtrace case, the iov has an extra element, the dtrace utag - we will need another test to see that
+	/* In the dtrace case, the iov has an extra element, the dtrace utag - we will need 
+	   another test to see that
 	   the filename is in a single buffer: */
 	if (ev->size-1 != ev->iov[q].iov_len-p) {
 	    /* Name not in one single buffer */
@@ -3778,8 +3779,6 @@ file_outputv(ErlDrvData e, ErlIOVec *ev) {
 	    goto done;
 	}
 #else
-	/* In the dtrace case, the iov has an extra element, the dtrace utag - we will need another test to see that
-	   the filename is in a single buffer: */
 	if (((byte *)ev->iov[q].iov_base)[ev->iov[q].iov_len-1] != '\0') {
 	    /* Name not in one single buffer */
 	    reply_posix_error(desc, EINVAL);
@@ -3797,8 +3796,20 @@ file_outputv(ErlDrvData e, ErlIOVec *ev) {
 	/* Copy name */
 	FILENAME_COPY(d->b, filename);
 #ifdef HAVE_DTRACE
-	dt_s1 = d->b;
-	dt_utag = filename + FILENAME_BYTELEN(d->b) + FILENAME_CHARSIZE;
+	{
+	    char dt_tmp;
+
+	    /* This will work for UTF-8, but not for UTF-16 - extra reminder here */
+#ifdef FILENAMES_16BIT 
+#error 16bit characters in filenames and dtrace in combination is not supported.
+#endif
+	    while (EV_GET_CHAR(ev, &dt_tmp, &p, &q) && dt_tmp != '\0') 
+		;
+	    dt_s1 = d->b;
+	    dt_utag = EV_CHAR_P(ev, p, q);
+	    if (*dt_utag != 0)
+		fprintf(stderr,"dt_utag = %s\r\n",dt_utag);
+	}
 #endif
 	d->c.read_file.binp = NULL;
 	d->invoke = invoke_read_file;

@@ -821,7 +821,8 @@ bif erlang:posixtime_to_universaltime/1
 bif erlang:put_utag/1
 bif erlang:get_utag/0
 bif erlang:get_utag_data/0
-bif erlang:spread_utag/0
+bif erlang:spread_utag/1
+bif erlang:restore_utag/1
 
 # These are dummies even with enabled dynamic trace unless vm probes are enabled. 
 # They are also internal, for dtrace tags sent to the VM's own drivers (efile)

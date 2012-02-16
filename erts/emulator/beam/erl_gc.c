@@ -2504,6 +2504,9 @@ offset_one_rootset(Process *p, Sint offs, char* area, Uint area_size,
     offset_heap_ptr(&p->fvalue, 1, offs, area, area_size);
     offset_heap_ptr(&p->ftrace, 1, offs, area, area_size);
     offset_heap_ptr(&p->seq_trace_token, 1, offs, area, area_size);
+#ifdef HAVE_DTRACE
+    offset_heap_ptr(&p->dt_utag, 1, offs, area, area_size);
+#endif
     offset_heap_ptr(&p->group_leader, 1, offs, area, area_size);
     offset_mqueue(p, offs, area, area_size);
     offset_heap_ptr(p->stop, (STACK_START(p) - p->stop), offs, area, area_size);

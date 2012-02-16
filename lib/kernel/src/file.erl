@@ -1421,7 +1421,10 @@ call(Command, Args) when is_list(Args) ->
 check_and_call(Command, Args) when is_list(Args) ->
     case check_args(Args) of
 	ok ->
-	    call(Command, Args);
+	    X = erlang:spread_utag(true),
+	    Y = call(Command, Args),
+	    erlang:restore_utag(X),
+	    Y;
 	Error ->
 	    Error
     end.

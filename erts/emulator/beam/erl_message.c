@@ -901,6 +901,7 @@ erts_send_message(Process* sender,
     }
     if (SEQ_TRACE_TOKEN(sender) != NIL && !(flags & ERTS_SND_FLG_NO_SEQ_TRACE)) {
         Eterm* hp;
+	Eterm stoken = SEQ_TRACE_TOKEN(sender);
 	Uint seq_trace_size = 0;
 #ifdef HAVE_DTRACE
 	Uint dt_utag_size = 0;
@@ -912,17 +913,19 @@ erts_send_message(Process* sender,
 	BM_SWAP_TIMER(size,send);
 
 #ifdef HAVE_DTRACE
-	if (SEQ_TRACE_TOKEN(sender) != am_have_dt_utag) {
+	if (stoken != am_have_dt_utag) {
 #endif
 
 	    seq_trace_update_send(sender);
-	    seq_trace_output(SEQ_TRACE_TOKEN(sender), message, SEQ_TRACE_SEND, 
+	    seq_trace_output(stoken, message, SEQ_TRACE_SEND, 
 			     receiver->id, sender);
 	    seq_trace_size = 6; /* TUPLE5 */
 #ifdef HAVE_DTRACE
 	}
 	if (DT_UTAG_FLAGS(sender) & DT_UTAG_SPREADING) {
 	    dt_utag_size = size_object(DT_UTAG(sender));
+	} else if (stoken == am_have_dt_utag ) {
+	    stoken = NIL;
 	}
 #endif
 
@@ -934,7 +937,7 @@ erts_send_message(Process* sender,
 	hp = bp->mem;
 
         BM_SWAP_TIMER(send,copy);
-	token = copy_struct(SEQ_TRACE_TOKEN(sender),
+	token = copy_struct(stoken,
 			    seq_trace_size,
 			    &hp,
 			    &bp->off_heap);
@@ -943,20 +946,30 @@ erts_send_message(Process* sender,
 #ifdef HAVE_DTRACE
 	if (DT_UTAG_FLAGS(sender) & DT_UTAG_SPREADING) {
 	    utag = copy_struct(DT_UTAG(sender), dt_utag_size, &hp, &bp->off_heap);
+	    erts_fprintf(stderr,"XXX: PaN: Dtrace -> (%T) Spreading tag (%T) with message %T!\r\n",sender->id, utag, message);
 	}
+#if 0
+	DT_UTAG_FLAGS(sender) &= ~DT_UTAG_SPREADING;
+	if (!(DT_UTAG_FLAGS(sender) & DT_UTAG_PERMANENT)) {
+	    erts_fprintf(stderr,"XXX: PaN: Dtrace -> (%T) Killing tag!\r\n",sender->id);
+	    DT_UTAG(sender) = NIL;
+	    if (SEQ_TRACE_TOKEN(sender) == am_have_dt_utag) {
+		SEQ_TRACE_TOKEN(sender) = NIL;
+	    }
+	}
+#endif
 #endif
         BM_MESSAGE_COPIED(msize);
         BM_SWAP_TIMER(copy,send);
 
         if (DTRACE_ENABLED(message_send)) {
-            Eterm token2 = NIL;
-
-            token2 = SEQ_TRACE_TOKEN(sender);
-            tok_label = signed_val(SEQ_TRACE_T_LABEL(token2));
-            tok_lastcnt = signed_val(SEQ_TRACE_T_LASTCNT(token2));
-            tok_serial = signed_val(SEQ_TRACE_T_SERIAL(token2));
-            DTRACE6(message_send, sender_name, receiver_name,
-                    msize, tok_label, tok_lastcnt, tok_serial);
+	    if (stoken != NIL) {
+		tok_label = signed_val(SEQ_TRACE_T_LABEL(stoken));
+		tok_lastcnt = signed_val(SEQ_TRACE_T_LASTCNT(stoken));
+		tok_serial = signed_val(SEQ_TRACE_T_SERIAL(stoken));
+	    }
+	    DTRACE6(message_send, sender_name, receiver_name,
+		    msize, tok_label, tok_lastcnt, tok_serial);
         }
         erts_queue_message(receiver,
 			   receiver_locks,
