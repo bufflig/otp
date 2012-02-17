@@ -923,12 +923,17 @@ drv_open(Driver, Portopts) ->
 %% Closes a port in a safe way. Returns ok.
 
 drv_close(Port) ->
-    try erlang:port_close(Port) catch error:_ -> ok end,
-    receive %% Ugly workaround in case the caller==owner traps exits
-	{'EXIT', Port, _Reason} -> 
-	    ok
-    after 0 -> 
-	    ok
+    Save = erlang:spread_utag(false),
+    try
+	try erlang:port_close(Port) catch error:_ -> ok end,
+	receive %% Ugly workaround in case the caller==owner traps exits
+	    {'EXIT', Port, _Reason} -> 
+		ok
+	after 0 -> 
+		ok
+	end
+    after
+	erlang:restore_utag(Save)
     end.
 
 
@@ -953,6 +958,7 @@ drv_command(Port, Command, R) ->
     end.
 
 drv_command(Port, Command, Validated, R) when is_port(Port) ->
+    Save = erlang:spread_utag(false),
     try erlang:port_command(Port, erlang:append_vm_utag_data(Command)) of
 	true ->
 	    drv_get_response(Port, R)
@@ -972,6 +978,8 @@ drv_command(Port, Command, Validated, R) when is_port(Port) ->
 	    end;
 	error:Reason ->
 	    {error, Reason}
+    after
+	erlang:restore_utag(Save)
     end;
 drv_command({Driver, Portopts}, Command, Validated, R) ->
     case drv_open(Driver, Portopts) of
@@ -983,6 +991,7 @@ drv_command({Driver, Portopts}, Command, Validated, R) ->
 	    Error
     end.
 drv_command_nt(Port, Command, Validated, R) when is_port(Port) ->
+    Save = erlang:spread_utag(false),
     try erlang:port_command(Port, Command) of
 	true ->
 	    drv_get_response(Port, R)
@@ -1002,6 +1011,8 @@ drv_command_nt(Port, Command, Validated, R) when is_port(Port) ->
 	    end;
 	error:Reason ->
 	    {error, Reason}
+    after
+	erlang:restore_utag(Save)
     end.
 
 

@@ -1897,9 +1897,9 @@ void process_main(void)
 	     if (DT_UTAG_FLAGS(c_p) & DT_UTAG_PERMANENT) {
 		 SEQ_TRACE_TOKEN(c_p) = am_have_dt_utag;
 		 if (DT_UTAG_FLAGS(c_p) & DT_UTAG_SPREADING) 
-		     erts_fprintf(stderr,"XXX: PaN: Dtrace -> (%T) stop spreading tag %T\r\n",c_p->id,DT_UTAG(c_p));
+		     erts_fprintf(stderr,"XXX: PaN: Dtrace -> (%T) stop spreading tag %T with message %T\r\n",c_p->id,DT_UTAG(c_p),ERL_MESSAGE_TERM(msgp));
 	     } else {
-		 erts_fprintf(stderr,"XXX: PaN: Dtrace -> (%T) kill tag %T\r\n",c_p->id,DT_UTAG(c_p));
+		 erts_fprintf(stderr,"XXX: PaN: Dtrace -> (%T) kill tag %T with message %T\r\n",c_p->id,DT_UTAG(c_p),ERL_MESSAGE_TERM(msgp));
 		 DT_UTAG(c_p) = NIL;
 		 SEQ_TRACE_TOKEN(c_p) = NIL;
 	     }
