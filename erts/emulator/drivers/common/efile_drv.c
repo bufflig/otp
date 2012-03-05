@@ -3807,8 +3807,6 @@ file_outputv(ErlDrvData e, ErlIOVec *ev) {
 		;
 	    dt_s1 = d->b;
 	    dt_utag = EV_CHAR_P(ev, p, q);
-	    if (*dt_utag != 0)
-		fprintf(stderr,"dt_utag = %s\r\n",dt_utag);
 	}
 #endif
 	d->c.read_file.binp = NULL;
@@ -4094,8 +4092,12 @@ file_outputv(ErlDrvData e, ErlIOVec *ev) {
 	d->sched_i2 = dt_priv->tag;
 	d->sched_utag[0] = '\0';
 	if (dt_utag != NULL) {
-	    strncpy(d->sched_utag, dt_utag, sizeof(d->sched_utag) - 1);
-	    d->sched_utag[sizeof(d->sched_utag) - 1] = '\0';
+	    if (dt_utag[0] == '\0') {
+                dt_utag = NULL;
+            } else {
+		strncpy(d->sched_utag, dt_utag, sizeof(d->sched_utag) - 1);
+		d->sched_utag[sizeof(d->sched_utag) - 1] = '\0';
+	    }
 	}
 	DTRACE11(efile_drv_entry, dt_priv->thread_num, dt_priv->tag++,
 		 dt_utag, command, dt_s1, NULL, dt_i1, dt_i2, dt_i3, dt_i4,
