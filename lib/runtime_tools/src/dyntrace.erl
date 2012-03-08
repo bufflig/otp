@@ -1,27 +1,28 @@
--module(dtrace).
+-module(dyntrace).
 
-%%% @doc The DTrace interface module
+%%% @doc The Dynamic tracing interface module
 %%%
-%%% This DTrace interface module, with the corresponding NIFs, should
-%%% work on any operating system platform where user-space DTrace
-%%% probes are supported.
+%%% This Dynamic tracing interface module, with the corresponding NIFs, should
+%%% work on any operating system platform where user-space DTrace/Systemtap 
+%%% (and in the future LttNG UST) probes are supported.
 %%%
-%%% Use the `dtrace:init()' function to load the NIF shared library and
+%%% Use the `dyntrace:init()' function to load the NIF shared library and
 %%% to initialize library's private state.
 %%%
-%%% It is recommended that you use the `dtrace:p()' function to add
-%%% DTrace probes to your Erlang code.  This function can accept up to
+%%% It is recommended that you use the `dyntrace:p()' function to add
+%%% Dynamic trace probes to your Erlang code.  This function can accept up to
 %%% four integer arguments and four string arguments; the integer
 %%% argument(s) must come before any string argument.  For example:
 %%% ```
-%%% 1> dtrace:put_tag("GGOOOAAALL!!!!!").
+%%% 1> dyntrace:put_utag("GGOOOAAALL!!!!!").
 %%% true
-%%% 2> dtrace:init().
+%%% 2> dyntrace:init().
 %%% ok
 %%%
-%%% % % % Enable the DTrace probe using the 'dtrace' command.
+%%% % % % If using dtrace, enable the Dynamic trace probe using the 'dtrace' 
+%%% % % % command.
 %%%
-%%% 3> dtrace:p(7, 8, 9, "one", "four").
+%%% 3> dyntrace:p(7, 8, 9, "one", "four").
 %%% true
 %%% '''
 %%%
@@ -45,18 +46,20 @@
 
 -type probe_arg() :: integer() | iolist().
 -type int_p_arg() :: integer() | iolist() | undef.
+
 %% The *_maybe() types use atom() instead of a stricter 'undef'
 %% because user_trace_i4s4/9 is exposed to the outside world, and
 %% because the driver will allow any atom to be used as a "not
 %% present" indication, we'll allow any atom in the types.
+
 -type integer_maybe() :: integer() | atom().
 -type iolist_maybe() :: iolist() | atom().
 
 -spec init() -> ok | {error, {term(), term()}}.
 
 init() ->
-    PrivDir = code:priv_dir(dtrace),
-    Lib = filename:join([PrivDir, "lib", "dtrace"]),
+    PrivDir = code:priv_dir(runtime_tools),
+    Lib = filename:join([PrivDir, "lib", "dyntrace"]),
     erlang:load_nif(Lib, 0).
 
 %%%
