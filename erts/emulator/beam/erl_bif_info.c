@@ -115,8 +115,11 @@ static char erts_system_version[] = ("Erlang " ERLANG_OTP_RELEASE
 #ifdef VALGRIND
 				     " [valgrind-compiled]"
 #endif
-#ifdef USE_VM_PROBES
+#ifdef USE_DTRACE
 				     " [dtrace]"
+#endif
+#ifdef USE_SYSTEMTAP
+				     " [systemtap]"
 #endif
 				     "\n");
 
