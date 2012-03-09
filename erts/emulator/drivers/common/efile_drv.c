@@ -2716,9 +2716,15 @@ file_output(ErlDrvData e, char* buf, ErlDrvSizeT count)
 		return;
 	    }
 #ifdef USE_VM_PROBES
-	    DTRACE11(efile_drv_entry, dt_priv->thread_num, dt_priv->tag++,
+	    if (dt_utag != NULL && dt_utag[0] == '\0') {
+                dt_utag = NULL;
+            } 
+
+	    DTRACE11(efile_drv_entry, dt_priv->thread_num, dt_priv->tag,
 		     dt_utag, command, name, dt_s2,
 		     dt_i1, dt_i2, dt_i3, dt_i4, desc->port_str);
+	    DTRACE6(efile_drv_return, dt_priv->thread_num, dt_priv->tag++, 
+		    dt_utag, command, 1, 0);
 #endif
 	    TRACE_C('R');
 	    driver_output2(desc->port, resbuf, 1, NULL, 0);
